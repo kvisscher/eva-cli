@@ -33,7 +33,7 @@ func GenerateLoginCommands(client client.Client) []cli.Command {
 				cli.IntFlag{Name: "organization, ou"},
 			},
 			Action: func(c *cli.Context) error {
-				password, err := terminal.ReadPassword(syscall.Stdin)
+				password, err := terminal.ReadPassword(int(syscall.Stdin))
 
 				if err != nil {
 					return err

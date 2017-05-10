@@ -44,6 +44,15 @@ type StoreBlobResponse struct {
 	Url  string
 }
 
+type GetBlobInfoResponse struct {
+	Guid string
+	MimeType string
+	OriginalName string
+	Category string
+	Size int
+	Url string
+}
+
 type GetCurrentUserResponse struct {
 	User User
 }

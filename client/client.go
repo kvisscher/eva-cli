@@ -14,23 +14,29 @@ import (
 	"github.com/new-black/eva-cli/messages"
 )
 
+type ClientFactory func() Client
+
 type Client interface {
 	Login(email string, password string, organizationUnitID int, applicationID int) (*messages.LoginResponse, error)
 	GetApplications() (*messages.ListApplicationsResponse, error)
 	GetCurrentUser() (*messages.User, error)
+	
 	Send(message interface{}, result interface{}) error
+	Get(resource string, result interface{}) error
+
 	StoreToken(token string) error
+	Host() string
 }
 
 type HttpClient struct {
-	Host string
+	host string
 
 	client *http.Client
 }
 
 func NewHttpClient(host string) *HttpClient {
 	return &HttpClient{
-		Host:   host,
+		host:   host,
 		client: &http.Client{},
 	}
 }
@@ -38,7 +44,7 @@ func NewHttpClient(host string) *HttpClient {
 func (c *HttpClient) GetApplications() (*messages.ListApplicationsResponse, error) {
 	var result messages.ListApplicationsResponse
 
-	res, err := c.client.Get(fmt.Sprintf("%s/api/v1/application", c.Host))
+	res, err := c.client.Get(fmt.Sprintf("%s/api/v1/application", c.host))
 
 	if err != nil {
 		return nil, err
@@ -65,7 +71,7 @@ func (c *HttpClient) Login(email string, password string, organizationUnitID int
 func (c *HttpClient) GetCurrentUser() (*messages.User, error) {
 	var result messages.GetCurrentUserResponse
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/user/current", c.Host), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/user/current", c.host), nil)
 
 	if err != nil {
 		return nil, err
@@ -101,12 +107,45 @@ func (c *HttpClient) GetCurrentUser() (*messages.User, error) {
 	return &result.User, nil
 }
 
+func (c *HttpClient) Get(resource string, result interface{}) error {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", c.host, resource), nil)
+
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	if pathToToken, err := getPathToToken(); err == nil {
+		token, err := ioutil.ReadFile(pathToToken)
+
+		if err == nil {
+			req.Header.Set("Authorization", string(token))
+		}
+	}
+
+	res, err := c.client.Do(req)
+
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("unauthorized: %s", res.Status)
+	}
+
+	return json.NewDecoder(res.Body).Decode(&result)
+}
+
 func (c *HttpClient) Send(message interface{}, result interface{}) error {
 	b := &bytes.Buffer{}
 
 	json.NewEncoder(b).Encode(message)
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/message/%s", c.Host, reflect.TypeOf(message).Name()), b)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/message/%s", c.host, reflect.TypeOf(message).Name()), b)
 
 	if err != nil {
 		return err
@@ -146,6 +185,10 @@ func (c *HttpClient) StoreToken(token string) error {
 	}
 
 	return ioutil.WriteFile(pathToToken, []byte(token), 0644)
+}
+
+func (c *HttpClient) Host() string {
+	return c.host
 }
 
 func getPathToToken() (string, error) {

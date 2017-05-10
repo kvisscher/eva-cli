@@ -10,10 +10,52 @@ import (
 	"github.com/new-black/eva-cli/client"
 	"github.com/new-black/eva-cli/messages"
 	"github.com/urfave/cli"
+	"mime"
 )
 
 func GenerateBlobCommands(client client.Client) []cli.Command {
 	return []cli.Command{
+		cli.Command{
+			Name: "get",
+			Action: func(c *cli.Context) error {
+				var response messages.GetBlobInfoResponse
+
+				if err := client.Get(fmt.Sprintf("api/v1/blob/%s/info", c.Args().First()), &response); err != nil {
+					return err
+				}
+
+				res, err := http.Get(response.Url)
+
+				if err != nil {
+					return err
+				}
+
+				defer res.Body.Close()
+
+				if res.StatusCode == http.StatusOK {
+					fileName := response.OriginalName
+
+					if fileName == "" {
+						ext := ".bin"
+						potentialExtensions, _ := mime.ExtensionsByType(response.MimeType)
+
+						if len(potentialExtensions) > 0 {
+							ext = potentialExtensions[0]
+						}
+
+						fileName = response.Guid + ext
+					}
+
+					b, _ := ioutil.ReadAll(res.Body)
+
+					if err := ioutil.WriteFile(fileName, b, 0644); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+		},
 		cli.Command{
 			Name: "upload",
 			Flags: []cli.Flag{
