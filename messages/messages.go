@@ -45,14 +45,22 @@ type StoreBlobResponse struct {
 }
 
 type GetBlobInfoResponse struct {
-	Guid string
-	MimeType string
+	Guid         string
+	MimeType     string
 	OriginalName string
-	Category string
-	Size int
-	Url string
+	Category     string
+	Size         int
+	Url          string
 }
 
 type GetCurrentUserResponse struct {
 	User User
+}
+
+type GetProductDetailResponse struct {
+	Result map[string]interface{}
+}
+
+type GetProductByBarcode struct {
+	Barcode string
 }

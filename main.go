@@ -6,10 +6,13 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"io/ioutil"
+
+	"log"
+
 	"github.com/new-black/eva-cli/client"
 	"github.com/new-black/eva-cli/cmd"
 	"github.com/urfave/cli"
-	"io/ioutil"
 )
 
 func main() {
@@ -20,7 +23,11 @@ func main() {
 		fmt.Println()
 	}
 
-	b, _ := ioutil.ReadFile(hostFile)
+	b, err := ioutil.ReadFile(hostFile)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	host := string(b)
 
@@ -44,6 +51,10 @@ func main() {
 		cli.Command{
 			Name:        "blob",
 			Subcommands: cmd.GenerateBlobCommands(evaClient),
+		},
+		cli.Command{
+			Name:        "products",
+			Subcommands: cmd.GenerateProductCommands(evaClient),
 		},
 	}
 
